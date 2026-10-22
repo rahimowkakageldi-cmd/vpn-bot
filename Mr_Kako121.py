@@ -27,6 +27,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
+# ИСПРАВЛЕНО ДЛЯ ТУРКМЕНИСТАНА: Бесплатный стабильный прокси только для обхода блокировок Telegram API
+telebot.apihelper.proxy = {'https': 'http://165.225.220.35:80'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -55,7 +57,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {} 
+    session.proxies = {}  # К панели обращаемся напрямую, без прокси
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -214,12 +216,9 @@ def handle_menu_clicks(call):
 def handle_payment(call):
     bot.answer_callback_query(call.id)
     days = 30
-    if call.data == "buy_2":
-        days = 60
-    elif call.data == "buy_6":
-        days = 180
-    elif call.data == "buy_12":
-        days = 365
+    if call.data == "buy_2": days = 60
+    elif call.data == "buy_6": days = 180
+    elif call.data == "buy_12": days = 365
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
     vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
@@ -234,5 +233,3 @@ def handle_payment(call):
         )
         bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
     else:
-        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
-
