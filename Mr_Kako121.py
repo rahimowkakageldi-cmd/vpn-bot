@@ -6,16 +6,17 @@ import base64
 import os
 import uuid
 import time
+import threading  # Добавлено для веб-сервера
+from http.server import BaseHTTPRequestHandler, HTTPServer  # Добавлено для веб-сервера
 from telebot import types
 
-# Отключаем предупреждения об отсутствии SSL-сертификата
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # =====================================================================
-# НАСТРОЙКИ СЕРВЕРА И БОТА (ТОЧНЫЙ IP И БЕЗ ЛИШНИХ ПРОКСИ)
+# НАСТРОЙКИ СЕРВЕРА И БОТА
 # =====================================================================
 BOT_TOKEN = "8522132903:AAHldacR2QDY67Pb734vmpMZ0WZSKxs0920"
 XUI_IP = "87.199.198.216"
@@ -26,7 +27,6 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# Инициализируем бота напрямую без прокси-серверов PythonAnywhere
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -82,7 +82,6 @@ def create_vpn_client(user_id, username, days_count):
         return None
 
     try:
-        # 1. Запрашиваем список всех инбаундов
         list_url = f"{PANEL_URL}/panel/api/inbounds/list"
         list_resp = session.get(list_url, timeout=10)
         inbounds = list_resp.json().get("obj", [])
@@ -91,7 +90,6 @@ def create_vpn_client(user_id, username, days_count):
             logging.error("В панели 3x-ui отсутствуют созданные подключения (Inbounds).")
             return None
         
-        # Умный поиск первого VLESS подключения в списке
         target_inbound = None
         for ib in inbounds:
             if ib.get("protocol") == "vless" and ib.get("enable") == True:
@@ -121,7 +119,6 @@ def create_vpn_client(user_id, username, days_count):
             "subId": ""
         }
 
-        # 2. Добавляем клиента в панель
         add_url = f"{PANEL_URL}/panel/api/inbounds/addClient"
         payload = {
             "id": inbound_id,
@@ -130,7 +127,6 @@ def create_vpn_client(user_id, username, days_count):
         
         add_resp = session.post(add_url, json=payload, timeout=10)
         if add_resp.json().get("success"):
-            # 3. Парсим параметры Reality и собираем vless-ссылку
             reality_settings = stream_settings.get("realitySettings", {})
             server_names = reality_settings.get("serverNames", ["example.com"])
             server_name = server_names if isinstance(server_names, list) and len(server_names) > 0 else server_names
@@ -194,7 +190,7 @@ def handle_test_period(message):
         )
         bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     else:
-        bot.send_message(message.chat.id, "❌ Не удалось сгенерировать ключ. Убедитесь, что в панели создано хотя бы одно подключение VLESS-Reality, а также открыт порт 2053 в Firewall вашего сервера.")
+        bot.send_message(message.chat.id, "❌ Не удалось сгенерировать ключ. Убедитесь, что в панели создан хотя бы одно подключение VLESS-Reality, а также открыт порт 2053 в Firewall вашего сервера.")
 
 @bot.message_handler(func=lambda message: message.text == "💰 Купить подписку")
 def handle_buy_subscription(message):
@@ -239,4 +235,9 @@ def handle_status(message):
     )
     bot.send_message(message.chat.id, status_text, parse_mode="Markdown")
 
-bot.remove_webhook()
+# =====================================================================
+# ВСТРОЕННЫЙ МИНИ ВЕБ-СЕРВЕР ДЛЯ ОБМАНА ПРОВЕРКИ ПОРТОВ RENDER
+# =====================================================================
+class WebServerHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
