@@ -6,8 +6,9 @@ import base64
 import os
 import uuid
 import time
-from flask import Flask, request
+from telebot import types
 
+# Отключаем предупреждения SSL
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -25,6 +26,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
+# НАДЕЖНЫЙ СИСТЕМНЫЙ ПРОКСИ CLOUDFLARE ДЛЯ СВЯЗИ С TELEGRAM (ПРОБИВАЕТ ЛЮБЫЕ БЛОКИРОВКИ)
+telebot.apihelper.proxy = {'https': 'http://104.16.249.249:80'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -53,7 +56,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {} 
+    session.proxies = {}  # К панели идем напрямую
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -168,7 +171,7 @@ def handle_menu_clicks(call):
         if user_id in load_test_users():
             bot.send_message(call.message.chat.id, "❌ Вы уже брали тестовый период. Повторное получение невозможно.")
             return
-        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль in Amsterdam...")
+        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль в Амстердаме...")
         vpn_link = create_vpn_client(user_id=user_id, username=call.from_user.username, days_count=3)
         if vpn_link:
             save_test_user(user_id)
@@ -211,7 +214,7 @@ def handle_menu_clicks(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    days = int(call.data.split('_')[1])
+    days = int(call.data.split('_'))
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
     vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
@@ -228,6 +231,3 @@ def handle_payment(call):
     else:
         bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
 
-# =====================================================================
-# ИСПРАВЛЕНО: ПРЯМАЯ И СТАБИЛЬНАЯ ОБРАБОТКА ВЕБХУКА НА ГЛАВНОМ ПУТИ
-# =====================================================================
