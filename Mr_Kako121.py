@@ -15,18 +15,18 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # =====================================================================
-# НАСТРОЙКИ СЕРВЕРА И БОТА
+# НАСТРОЙКИ СЕРВЕРА И БОТА (ТОЧНЫЙ IP И БЕЗ ЛИШНИХ ПРОКСИ)
 # =====================================================================
 BOT_TOKEN = "8522132903:AAHldacR2QDY67Pb734vmpMZ0WZSKxs0920"
-XUI_IP = "87.199.198.168"
+XUI_IP = "87.199.198.216"
 XUI_PORT = "2053"
 XUI_LOGIN = "admin"
 XUI_PASSWORD = "htgvMHk12h332BPS8w2-"
 XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
-# ИСПРАВЛЕНО: Изменено на http, так как подключение идет по прямому IP без SSL-домена
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
+# Инициализируем бота напрямую без прокси-серверов PythonAnywhere
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -55,7 +55,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}  # Прямой запрос без прокси хостинга
+    session.proxies = {} 
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -64,7 +64,6 @@ def get_xui_session():
             data={"username": XUI_LOGIN, "password": XUI_PASSWORD}, 
             timeout=10
         )
-        # Проверяем успешность авторизации по кукам или JSON-ответу
         if response.status_code == 200:
             if "success" in response.text and not response.json().get("success"):
                 logging.error(f"Панель отклонила логин/пароль: {response.text}")
@@ -92,21 +91,19 @@ def create_vpn_client(user_id, username, days_count):
             logging.error("В панели 3x-ui отсутствуют созданные подключения (Inbounds).")
             return None
         
-        # ИСПРАВЛЕНО: Умный поиск первого VLESS подключения в списке
+        # Умный поиск первого VLESS подключения в списке
         target_inbound = None
         for ib in inbounds:
             if ib.get("protocol") == "vless" and ib.get("enable") == True:
                 target_inbound = ib
                 break
                 
-        # Если VLESS не найден, берем самый первый активный инбаунд
         if not target_inbound:
-            target_inbound = inbounds[0]
+            target_inbound = inbounds
             
         inbound_id = target_inbound["id"]
         stream_settings = json.loads(target_inbound["streamSettings"])
         
-        # Вычисляем время окончания (в миллисекундах)
         expiry_time = int((time.time() + (days_count * 86400)) * 1000)
         tg_username = username if username else "user"
         email = f"client_{user_id}_{tg_username}_{days_count}d"
@@ -117,7 +114,7 @@ def create_vpn_client(user_id, username, days_count):
             "alterId": 0,
             "email": email,
             "limitIp": 2,
-            "totalGB": 0,  # Безлимитный трафик
+            "totalGB": 0,  
             "expiryTime": expiry_time,
             "enable": True,
             "tgId": str(user_id),
@@ -136,11 +133,11 @@ def create_vpn_client(user_id, username, days_count):
             # 3. Парсим параметры Reality и собираем vless-ссылку
             reality_settings = stream_settings.get("realitySettings", {})
             server_names = reality_settings.get("serverNames", ["example.com"])
-            server_name = server_names[0] if isinstance(server_names, list) and len(server_names) > 0 else server_names
+            server_name = server_names if isinstance(server_names, list) and len(server_names) > 0 else server_names
             
             public_key = reality_settings.get("publicKey", "")
             short_ids = reality_settings.get("shortIds", [""])
-            short_id = short_ids[0] if isinstance(short_ids, list) and len(short_ids) > 0 else short_ids
+            short_id = short_ids if isinstance(short_ids, list) and len(short_ids) > 0 else short_ids
             
             port = target_inbound["port"]
             network = stream_settings.get("network", "tcp")
@@ -197,7 +194,7 @@ def handle_test_period(message):
         )
         bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
     else:
-        bot.send_message(message.chat.id, "❌ Не удалось сгенерировать ключ. Убедитесь, что в панели создано хотя бы одно подключение VLESS, или проверьте порты сервера.")
+        bot.send_message(message.chat.id, "❌ Не удалось сгенерировать ключ. Убедитесь, что в панели создано хотя бы одно подключение VLESS-Reality, а также открыт порт 2053 в Firewall вашего сервера.")
 
 @bot.message_handler(func=lambda message: message.text == "💰 Купить подписку")
 def handle_buy_subscription(message):
@@ -238,3 +235,8 @@ def handle_status(message):
     status_text = (
         f"👤 **Личный кабинет**\n\n"
         f"Ваш Telegram ID: `{message.from_user.id}`\n\n"
+        f"Статус подписки: Проверка баланса онлайн будет доступна после интеграции базы данных."
+    )
+    bot.send_message(message.chat.id, status_text, parse_mode="Markdown")
+
+bot.remove_webhook()
