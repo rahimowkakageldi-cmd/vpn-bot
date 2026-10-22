@@ -25,8 +25,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# ИСПРАВЛЕНО: Переключено на стандартный HTTP прокси-порт вашей панели 3x-ui для стабильной связи
-telebot.apihelper.proxy = {'https': f'http://{XUI_IP}:2053'}
+# ИСПРАВЛЕНО: Добавлена авторизация (логин и пароль) прямо в HTTP-прокси для вашей панели
+telebot.apihelper.proxy = {'https': f'http://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:{XUI_PORT}'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
