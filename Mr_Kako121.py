@@ -22,9 +22,7 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"https://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# Для сторонних хостингов (Render) этот прокси больше не нужен, 
-# но мы оставляем его, чтобы библиотека не выдавала ошибок.
-telebot.apihelper.proxy = {'https': 'http://proxy.server:3128'}
+# Строка прокси для PythonAnywhere полностью удалена. Бот на Render будет работать напрямую.
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -87,11 +85,11 @@ def create_vpn_client(user_id, username, days_count):
         if add_resp.json().get("success"):
             server_name = stream_settings.get("realitySettings", {}).get("serverNames", ["example.com"])
             if isinstance(server_name, list) and len(server_name) > 0:
-                server_name = server_name[0]
+                server_name = server_name
             public_key = stream_settings.get("realitySettings", {}).get("publicKey", "")
             short_id = stream_settings.get("realitySettings", {}).get("shortIds", [""])
             if isinstance(short_id, list) and len(short_id) > 0:
-                short_id = short_id[0]
+                short_id = short_id
             port = inbound["port"]
             vless_link = f"vless://{client_uuid}@{XUI_IP}:{port}?type=tcp&security=reality&pbk={public_key}&fp=chrome&sni={server_name}&sid={short_id}#{email}"
             return vless_link
