@@ -6,7 +6,7 @@ import base64
 import os
 import uuid
 import time
-from telebot import types
+from flask import Flask, request
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -25,8 +25,7 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# Авторизованный HTTP-прокси через вашу панель
-telebot.apihelper.proxy = {'https': f'http://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:{XUI_PORT}'}
+# ИСПРАВЛЕНО: Убран прокси, так как режим Webhook на Render работает напрямую
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -128,7 +127,7 @@ def create_vpn_client(user_id, username, days_count):
     return None
 
 # =====================================================================
-# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ
+# ДИЗАЙК КНОПОК ПОД СООБЩЕНИЕМ
 # =====================================================================
 def build_inline_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -208,12 +207,11 @@ def handle_menu_clicks(call):
         bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате или подключению, напишите нашему администратору: @ваша_поддержка")
 
 # =====================================================================
-# ИСПРАВЛЕНО: ОБРАБОТКА ПОКУПКИ ТАРИФОВ В ОДНУ СТРОКУ (БЕЗ ОШИБОК ОТСТУПОВ)
+# ОБРАБОТКА ПОКУПКИ ТАРИФОВ
 # =====================================================================
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    # Автоматически берем количество дней прямо из названия callback_data
     days = int(call.data.split('_')[1])
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
@@ -229,3 +227,7 @@ def handle_payment(call):
         )
         bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
     else:
+        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
+
+# =====================================================================
+# НАСТРОЙКА FLASK СЕРВЕРА ПОД РЕЖИМ WEBHOOK RENDER
