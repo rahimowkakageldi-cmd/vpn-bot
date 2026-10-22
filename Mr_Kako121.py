@@ -6,8 +6,8 @@ import base64
 import os
 import uuid
 import time
-import threading  # Добавлено для веб-сервера
-from http.server import BaseHTTPRequestHandler, HTTPServer  # Добавлено для веб-сервера
+import threading
+from flask import Flask  # Использование Flask вместо ручного сервера
 from telebot import types
 
 import urllib3
@@ -236,8 +236,13 @@ def handle_status(message):
     bot.send_message(message.chat.id, status_text, parse_mode="Markdown")
 
 # =====================================================================
-# ВСТРОЕННЫЙ МИНИ ВЕБ-СЕРВЕР ДЛЯ ОБМАНА ПРОВЕРКИ ПОРТОВ RENDER
+# ИСПОЛЬЗОВАНИЕ FLASK ДЛЯ СТАБИЛЬНОГО ОБХОДА ПОРТОВ RENDER
 # =====================================================================
-class WebServerHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Bot is running!"
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
