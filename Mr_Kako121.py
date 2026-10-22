@@ -7,7 +7,7 @@ import os
 import uuid
 import time
 import threading
-from flask import Flask  # Использование Flask вместо ручного сервера
+from flask import Flask
 from telebot import types
 
 import urllib3
@@ -66,14 +66,10 @@ def get_xui_session():
         )
         if response.status_code == 200:
             if "success" in response.text and not response.json().get("success"):
-                logging.error(f"Панель отклонила логин/пароль: {response.text}")
                 return None
-            logging.info("Успешная авторизация в панели 3x-ui.")
             return session
-        else:
-            logging.error(f"Ошибка авторизации, статус-код: {response.status_code}")
-    except Exception as e:
-        logging.error(f"Не удалось подключиться к серверу панели: {e}")
+    except Exception:
+        pass
     return None
 
 def create_vpn_client(user_id, username, days_count):
@@ -87,7 +83,6 @@ def create_vpn_client(user_id, username, days_count):
         inbounds = list_resp.json().get("obj", [])
         
         if not inbounds:
-            logging.error("В панели 3x-ui отсутствуют созданные подключения (Inbounds).")
             return None
         
         target_inbound = None
@@ -108,22 +103,12 @@ def create_vpn_client(user_id, username, days_count):
         client_uuid = str(uuid.uuid4())
 
         client_spec = {
-            "id": client_uuid,
-            "alterId": 0,
-            "email": email,
-            "limitIp": 2,
-            "totalGB": 0,  
-            "expiryTime": expiry_time,
-            "enable": True,
-            "tgId": str(user_id),
-            "subId": ""
+            "id": client_uuid, "alterId": 0, "email": email, "limitIp": 2,
+            "totalGB": 0, "expiryTime": expiry_time, "enable": True, "tgId": str(user_id), "subId": ""
         }
 
         add_url = f"{PANEL_URL}/panel/api/inbounds/addClient"
-        payload = {
-            "id": inbound_id,
-            "settings": json.dumps({"clients": [client_spec]})
-        }
+        payload = {"id": inbound_id, "settings": json.dumps({"clients": [client_spec]})}
         
         add_resp = session.post(add_url, json=payload, timeout=10)
         if add_resp.json().get("success"):
@@ -136,73 +121,97 @@ def create_vpn_client(user_id, username, days_count):
             short_id = short_ids if isinstance(short_ids, list) and len(short_ids) > 0 else short_ids
             
             port = target_inbound["port"]
-            network = stream_settings.get("network", "tcp")
-            security = stream_settings.get("security", "reality")
-            
-            vless_link = f"vless://{client_uuid}@{XUI_IP}:{port}?type={network}&security={security}&pbk={public_key}&fp=chrome&sni={server_name}&sid={short_id}#{email}"
+            vless_link = f"vless://{client_uuid}@{XUI_IP}:{port}?type=tcp&security=reality&pbk={public_key}&fp=chrome&sni={server_name}&sid={short_id}#{email}"
             return vless_link
-        else:
-            logging.error(f"Панель вернула ошибку при добавлении клиента: {add_resp.text}")
-    except Exception as e:
-        logging.error(f"Критическая ошибка при работе с API панели: {e}")
+    except Exception:
+        pass
     return None
 
 # =====================================================================
-# ИНТЕРФЕЙС И ОБРАБОТКА ТЕЛЕГРАМ
+# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ (БЕЗ КНОПКИ РОЗЫГРЫШ)
 # =====================================================================
-def main_menu():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    markup.add(
-        types.KeyboardButton("🎁 Получить бесплатный тест (3 дня)"),
-        types.KeyboardButton("💰 Купить подписку"),
-        types.KeyboardButton("ℹ️ Мой личный кабинет / Статус")
-    )
+def build_inline_menu():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    
+    # Кнопки во всю ширину экрана
+    btn_buy = types.InlineKeyboardButton("💰 Купить подписку", callback_data="menu_buy")
+    btn_test = types.InlineKeyboardButton("🎁 Получить бесплатный тест (3 дня)", callback_data="menu_test")
+    
+    # Кнопки плиткой (по две в строке)
+    btn_earn = types.InlineKeyboardButton("💸 Заработок", callback_data="menu_earn")
+    btn_site = types.InlineKeyboardButton("🌐 Наш сайт", callback_data="menu_site")
+    btn_about = types.InlineKeyboardButton("ℹ️ О сервисе", callback_data="menu_about")
+    btn_support = types.InlineKeyboardButton("👤 Поддержка", callback_data="menu_support")
+    
+    markup.add(btn_buy)
+    markup.add(btn_test)
+    markup.add(btn_earn, btn_site)     # Первая строка плитки
+    markup.add(btn_about, btn_support) # Вторая строка плитки
+    
     return markup
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     welcome_text = (
-        "👋 **Приветствуем вас в нашем VPN-сервисе!**\n\n"
-        "Мы обеспечиваем высокую скорость на серверах в Амстердаме.\n\n"
-        "Вы можете протестировать наш сервис бесплатно в течение 3 дней или сразу приобрести подписку."
+        f"👤 **Профиль**\n\n"
+        f"Привет, {message.from_user.first_name}!\n"
+        f"Ваш Telegram ID: `{message.from_user.id}`\n"
+        f"📱 VPN PRO Status: Нажмите кнопку ниже для проверки подписки."
     )
-    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=main_menu())
+    bot.send_message(message.chat.id, welcome_text, parse_mode="Markdown", reply_markup=build_inline_menu())
 
-@bot.message_handler(func=lambda message: message.text == "🎁 Получить бесплатный тест (3 дня)")
-def handle_test_period(message):
-    user_id = message.from_user.id
-    if user_id in load_test_users():
-        bot.send_message(message.chat.id, "❌ Вы уже брали тестовый период. Повторное получение невозможно.")
-        return
-
-    bot.send_message(message.chat.id, "⏳ Создаем ваш профиль в Амстердаме, пожалуйста, подождите...")
-    vpn_link = create_vpn_client(user_id=user_id, username=message.from_user.username, days_count=3)
+# =====================================================================
+# ОБРАБОТЧИК НАЖАТИЙ НА ИНЛАЙН-КНОПКИ МЕНЮ
+# =====================================================================
+@bot.callback_query_handler(func=lambda call: call.data.startswith('menu_'))
+def handle_menu_clicks(call):
+    bot.answer_callback_query(call.id)
+    user_id = call.from_user.id
     
-    if vpn_link:
-        save_test_user(user_id)
-        success_text = (
-            f"🎉 **Ваш тестовый доступ готов!**\n\n"
-            f"⏳ Срок действия: 3 дня\n"
-            f"📊 Лимит трафика: Безлимит\n\n"
-            f"📋 **Ваша ссылка для подключения:**\n"
-            f"`{vpn_link}`\n\n"
-            f"💡 _Нажмите на ссылку выше, чтобы скопировать её, и вставьте в ваше VPN-приложение._"
+    if call.data == "menu_test":
+        if user_id in load_test_users():
+            bot.send_message(call.message.chat.id, "❌ Вы уже брали тестовый период. Повторное получение невозможно.")
+            return
+        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль в Амстердаме...")
+        vpn_link = create_vpn_client(user_id=user_id, username=call.from_user.username, days_count=3)
+        if vpn_link:
+            save_test_user(user_id)
+            success_text = (
+                f"🎉 **Ваш тестовый доступ готов!**\n\n"
+                f"⏳ Срок действия: 3 дня\n"
+                f"📋 **Ваша ссылка для подключения:**\n"
+                f"`{vpn_link}`\n\n"
+                f"💡 _Нажмите на ссылку выше, чтобы скопировать её, и вставьте в ваше VPN-приложение._"
+            )
+            bot.send_message(call.message.chat.id, success_text, parse_mode="Markdown")
+        else:
+            bot.send_message(call.message.chat.id, "❌ Ошибка соединения с панелью. Проверьте порт и настройки.")
+
+    elif call.data == "menu_buy":
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(
+            types.InlineKeyboardButton(PRICE_1_MONTH, callback_data="buy_1"),
+            types.InlineKeyboardButton(PRICE_2_MONTH, callback_data="buy_2"),
+            types.InlineKeyboardButton(PRICE_6_MONTH, callback_data="buy_6"),
+            types.InlineKeyboardButton(PRICE_1_YEAR, callback_data="buy_12")
         )
-        bot.send_message(message.chat.id, success_text, parse_mode="Markdown")
-    else:
-        bot.send_message(message.chat.id, "❌ Не удалось сгенерировать ключ. Убедитесь, что в панели создан хотя бы одно подключение VLESS-Reality, а также открыт порт 2053 в Firewall вашего сервера.")
+        bot.send_message(call.message.chat.id, "👇 Выберите тарифный план для покупки:", reply_markup=markup)
 
-@bot.message_handler(func=lambda message: message.text == "💰 Купить подписку")
-def handle_buy_subscription(message):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        types.InlineKeyboardButton(PRICE_1_MONTH, callback_data="buy_1"),
-        types.InlineKeyboardButton(PRICE_2_MONTH, callback_data="buy_2"),
-        types.InlineKeyboardButton(PRICE_6_MONTH, callback_data="buy_6"),
-        types.InlineKeyboardButton(PRICE_1_YEAR, callback_data="buy_12")
-    )
-    bot.send_message(message.chat.id, "👇 Выберите тарифный план для покупки:", reply_markup=markup)
+    elif call.data == "menu_earn":
+        bot.send_message(call.message.chat.id, "💸 **Реферальная программа**\n\nПриглашайте друзей по вашей ссылке и получайте 20% от их покупок на баланс! (Раздел интеграции баланса в разработке).")
 
+    elif call.data == "menu_site":
+        bot.send_message(call.message.chat.id, "🌐 Наш официальный сайт доступен по адресу: `https://example.com` (замените на ваш домен).")
+
+    elif call.data == "menu_about":
+        bot.send_message(call.message.chat.id, "ℹ️ **О сервисе**\n\nМы предоставляем сверхбыстрый VPN на протоколе VLESS Reality со скоростью до 1 Гбит/с. Серверы расположены в Амстердаме, Нидерланды.")
+
+    elif call.data == "menu_support":
+        bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате или подключению, напишите нашему администратору: @ваша_поддержка")
+
+# =====================================================================
+# ОБРАБОТКА ПОКУПКИ ТАРИФОВ
+# =====================================================================
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
@@ -224,25 +233,3 @@ def handle_payment(call):
         )
         bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
     else:
-        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
-
-@bot.message_handler(func=lambda message: message.text in ["ℹ️ Мой личный кабинет / Статус"])
-def handle_status(message):
-    status_text = (
-        f"👤 **Личный кабинет**\n\n"
-        f"Ваш Telegram ID: `{message.from_user.id}`\n\n"
-        f"Статус подписки: Проверка баланса онлайн будет доступна после интеграции базы данных."
-    )
-    bot.send_message(message.chat.id, status_text, parse_mode="Markdown")
-
-# =====================================================================
-# ИСПОЛЬЗОВАНИЕ FLASK ДЛЯ СТАБИЛЬНОГО ОБХОДА ПОРТОВ RENDER
-# =====================================================================
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return "Bot is running!"
-
-def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
