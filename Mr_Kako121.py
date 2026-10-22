@@ -6,8 +6,6 @@ import base64
 import os
 import uuid
 import time
-import threading
-from flask import Flask
 from telebot import types
 
 import urllib3
@@ -27,8 +25,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# НАДЕЖНОЕ РЕШЕНИЕ: Бот на Render использует ваш личный сервер 3x-ui в качестве прокси для Telegram API
-telebot.apihelper.proxy = {'https': f'socks5://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:1080'}
+# ПОДКЛЮЧЕНИЕ ЧЕРЕЗ ВАШ ЛИЧНЫЙ SOCKS5 ПРОКСИ СЕРВЕРА ДЛЯ СВЯЗИ С TELEGRAM
+telebot.apihelper.proxy = {'https': f'socks5://{XUI_IP}:1080'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -57,7 +55,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}  # К самой панели обращаемся напрямую
+    session.proxies = {} 
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -198,7 +196,7 @@ def handle_menu_clicks(call):
         bot.send_message(call.message.chat.id, "👇 Выберите тарифный план для покупки:", reply_markup=markup)
 
     elif call.data == "menu_earn":
-        bot.send_message(call.message.chat.id, "💸 **Реферальная программа**\n\nПриглашайте друзей по вашей ссылке и получайте 20% от их покупок на баланс! (Раздел интеграции баланса в разработке).")
+        bot.send_message(call.message.chat.id, "💸 **Реферальная программа**\n\nПриглашайте друзей по вашей ссылке и получайте 20% от их покупок на баланс!")
 
     elif call.data == "menu_site":
         bot.send_message(call.message.chat.id, "🌐 Наш официальный сайт доступен по адресу: `https://example.com` (замените на ваш домен).")
@@ -231,3 +229,7 @@ def handle_payment(call):
             f"`{vpn_key}`\n\n"
             f"💡 _Нажмите на текст ключа выше, чтобы автоматически скопировать его в буфер обмена._"
         )
+        bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
+    else:
+        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
+
