@@ -25,8 +25,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# ПОДКЛЮЧЕНИЕ ЧЕРЕЗ ВАШ ЛИЧНЫЙ SOCKS5 ПРОКСИ СЕРВЕРА ДЛЯ СВЯЗИ С TELEGRAM
-telebot.apihelper.proxy = {'https': f'socks5://{XUI_IP}:1080'}
+# ИСПРАВЛЕНО: Переключено на стандартный HTTP прокси-порт вашей панели 3x-ui для стабильной связи
+telebot.apihelper.proxy = {'https': f'http://{XUI_IP}:2053'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -231,5 +231,3 @@ def handle_payment(call):
         )
         bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
     else:
-        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
-
