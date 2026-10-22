@@ -27,8 +27,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# ИСПРАВЛЕНО ДЛЯ ТУРКМЕНИСТАНА: Бесплатный стабильный прокси только для обхода блокировок Telegram API
-telebot.apihelper.proxy = {'https': 'http://165.225.220.35:80'}
+# НАДЕЖНОЕ РЕШЕНИЕ: Бот на Render использует ваш личный сервер 3x-ui в качестве прокси для Telegram API
+telebot.apihelper.proxy = {'https': f'socks5://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:1080'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -57,7 +57,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}  # К панели обращаемся напрямую, без прокси
+    session.proxies = {}  # К самой панели обращаемся напрямую
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -231,5 +231,3 @@ def handle_payment(call):
             f"`{vpn_key}`\n\n"
             f"💡 _Нажмите на текст ключа выше, чтобы автоматически скопировать его в буфер обмена._"
         )
-        bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
-    else:
