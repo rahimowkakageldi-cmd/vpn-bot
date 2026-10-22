@@ -25,7 +25,6 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# ИСПРАВЛЕНО: Убран прокси, так как режим Webhook на Render работает напрямую
 bot = telebot.TeleBot(BOT_TOKEN)
 
 PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
@@ -127,7 +126,7 @@ def create_vpn_client(user_id, username, days_count):
     return None
 
 # =====================================================================
-# ДИЗАЙК КНОПОК ПОД СООБЩЕНИЕМ
+# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ
 # =====================================================================
 def build_inline_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -230,4 +229,6 @@ def handle_payment(call):
         bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
 
 # =====================================================================
-# НАСТРОЙКА FLASK СЕРВЕРА ПОД РЕЖИМ WEBHOOK RENDER
+# ОФИЦИАЛЬНАЯ ТОЧКА ПОДКЛЮЧЕНИЯ ВЕБХУКА ДЛЯ GUNICORN
+# =====================================================================
+app = Flask(__name__)
