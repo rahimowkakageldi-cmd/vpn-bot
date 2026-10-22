@@ -168,7 +168,7 @@ def handle_menu_clicks(call):
         if user_id in load_test_users():
             bot.send_message(call.message.chat.id, "❌ Вы уже брали тестовый период. Повторное получение невозможно.")
             return
-        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль в Амстердаме...")
+        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль in Amsterdam...")
         vpn_link = create_vpn_client(user_id=user_id, username=call.from_user.username, days_count=3)
         if vpn_link:
             save_test_user(user_id)
@@ -229,6 +229,5 @@ def handle_payment(call):
         bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
 
 # =====================================================================
-# ОФИЦИАЛЬНАЯ ТОЧКА ПОДКЛЮЧЕНИЯ ВЕБХУКА ДЛЯ GUNICORN
+# ИСПРАВЛЕНО: ПРЯМАЯ И СТАБИЛЬНАЯ ОБРАБОТКА ВЕБХУКА НА ГЛАВНОМ ПУТИ
 # =====================================================================
-app = Flask(__name__)
