@@ -128,16 +128,14 @@ def create_vpn_client(user_id, username, days_count):
     return None
 
 # =====================================================================
-# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ (БЕЗ КНОПКИ РОЗЫГРЫШ)
+# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ
 # =====================================================================
 def build_inline_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
     
-    # Кнопки во всю ширину экрана
     btn_buy = types.InlineKeyboardButton("💰 Купить подписку", callback_data="menu_buy")
     btn_test = types.InlineKeyboardButton("🎁 Получить бесплатный тест (3 дня)", callback_data="menu_test")
     
-    # Кнопки плиткой (по две в строке)
     btn_earn = types.InlineKeyboardButton("💸 Заработок", callback_data="menu_earn")
     btn_site = types.InlineKeyboardButton("🌐 Наш сайт", callback_data="menu_site")
     btn_about = types.InlineKeyboardButton("ℹ️ О сервисе", callback_data="menu_about")
@@ -145,8 +143,8 @@ def build_inline_menu():
     
     markup.add(btn_buy)
     markup.add(btn_test)
-    markup.add(btn_earn, btn_site)     # Первая строка плитки
-    markup.add(btn_about, btn_support) # Вторая строка плитки
+    markup.add(btn_earn, btn_site)     
+    markup.add(btn_about, btn_support) 
     
     return markup
 
@@ -216,9 +214,12 @@ def handle_menu_clicks(call):
 def handle_payment(call):
     bot.answer_callback_query(call.id)
     days = 30
-    if call.data == "buy_2": days = 60
-    elif call.data == "buy_6": days = 180
-    elif call.data == "buy_12": days = 365
+    if call.data == "buy_2":
+        days = 60
+    elif call.data == "buy_6":
+        days = 180
+    elif call.data == "buy_12":
+        days = 365
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
     vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
@@ -233,3 +234,5 @@ def handle_payment(call):
         )
         bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
     else:
+        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
+
