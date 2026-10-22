@@ -25,7 +25,7 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# ИСПРАВЛЕНО: Добавлена авторизация (логин и пароль) прямо в HTTP-прокси для вашей панели
+# Авторизованный HTTP-прокси через вашу панель
 telebot.apihelper.proxy = {'https': f'http://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:{XUI_PORT}'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -188,10 +188,10 @@ def handle_menu_clicks(call):
     elif call.data == "menu_buy":
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
-            types.InlineKeyboardButton(PRICE_1_MONTH, callback_data="buy_1"),
-            types.InlineKeyboardButton(PRICE_2_MONTH, callback_data="buy_2"),
-            types.InlineKeyboardButton(PRICE_6_MONTH, callback_data="buy_6"),
-            types.InlineKeyboardButton(PRICE_1_YEAR, callback_data="buy_12")
+            types.InlineKeyboardButton(PRICE_1_MONTH, callback_data="buy_30"),
+            types.InlineKeyboardButton(PRICE_2_MONTH, callback_data="buy_60"),
+            types.InlineKeyboardButton(PRICE_6_MONTH, callback_data="buy_180"),
+            types.InlineKeyboardButton(PRICE_1_YEAR, callback_data="buy_365")
         )
         bot.send_message(call.message.chat.id, "👇 Выберите тарифный план для покупки:", reply_markup=markup)
 
@@ -208,15 +208,13 @@ def handle_menu_clicks(call):
         bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате или подключению, напишите нашему администратору: @ваша_поддержка")
 
 # =====================================================================
-# ОБРАБОТКА ПОКУПКИ ТАРИФОВ
+# ИСПРАВЛЕНО: ОБРАБОТКА ПОКУПКИ ТАРИФОВ В ОДНУ СТРОКУ (БЕЗ ОШИБОК ОТСТУПОВ)
 # =====================================================================
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    days = 30
-    if call.data == "buy_2": days = 60
-    elif call.data == "buy_6": days = 180
-    elif call.data == "buy_12": days = 365
+    # Автоматически берем количество дней прямо из названия callback_data
+    days = int(call.data.split('_')[1])
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
     vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
