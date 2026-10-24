@@ -25,6 +25,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
+# ИСПРАВЛЕНО ДЛЯ ТУРКМЕНИСТАНА: Прокси Cloudflare используется ТОЛЬКО для отправки ответов в Telegram API
+telebot.apihelper.proxy = {'https': 'http://104.16.249.249:80'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 TEST_USERS_FILE = "client_test_users.json"
@@ -48,7 +50,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}
+    session.proxies = {}  # К вашей панели идем напрямую, без прокси
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -199,7 +201,7 @@ def handle_payment(call):
     bot.send_message(call.message.chat.id, "💳 Для оформления покупки подписки напишите нашему администратору в раздел **«👤 Поддержка»**.")
 
 # =====================================================================
-# АВТОМАТИЧЕСКАЯ ТОЧКА ПОДКЛЮЧЕНИЯ ВЕБХУКА ДЛЯ СЕРВЕРА GUNICORN НА RENDER
+# АВТОМАТИЧЕСКАЯ ТОЧКА ПОДКЛЮЧЕНИЯ ВЕБХУКА
 # =====================================================================
 app = Flask(__name__)
 RENDER_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}"
