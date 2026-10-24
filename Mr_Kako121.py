@@ -171,7 +171,7 @@ def handle_menu_clicks(call):
         if user_id in load_test_users():
             bot.send_message(call.message.chat.id, "❌ Вы уже брали тестовый период. Повторное получение невозможно.")
             return
-        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль в Амстердаме...")
+        bot.send_message(call.message.chat.id, "⏳ Создаем ваш тестовый профиль in Amsterdam...")
         vpn_link = create_vpn_client(user_id=user_id, username=call.from_user.username, days_count=3)
         if vpn_link:
             save_test_user(user_id)
@@ -205,8 +205,9 @@ def handle_menu_clicks(call):
     elif call.data == "menu_about":
         bot.send_message(call.message.chat.id, "ℹ️ **О сервисе**\n\nМы предоставляем сверхбыстрый VPN на протоколе VLESS Reality со скоростью до 1 Гбит/с. Серверы расположены в Амстердаме, Нидерланды.")
 
+    # ИСПРАВЛЕНО: Добавлен ваш точный юзернейм техподдержки
     elif call.data == "menu_support":
-        bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате или подключению, напишите нашему администратору: @ваша_поддержка")
+        bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате, настройке или подключению, напишите нашему администратору: @Mr_Kako1")
 
 # =====================================================================
 # ОБРАБОТКА ПОКУПКИ ТАРИФОВ
@@ -214,7 +215,7 @@ def handle_menu_clicks(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    days = int(call.data.split('_'))
+    days = int(call.data.split('_')[1])
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
     vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
@@ -229,5 +230,3 @@ def handle_payment(call):
         )
         bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
     else:
-        bot.edit_message_text("❌ Ошибка генерации ключа. Проверьте настройки инбаундов в панели.", chat_id=call.message.chat.id, message_id=status_msg.message_id)
-
