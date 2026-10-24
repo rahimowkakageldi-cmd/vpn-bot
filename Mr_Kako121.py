@@ -6,9 +6,8 @@ import base64
 import os
 import uuid
 import time
-from telebot import types
+from flask import Flask, request
 
-# Отключаем предупреждения SSL
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -26,8 +25,7 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# ИСПРАВЛЕНО: Ваш личный защищенный туннель с авторизацией для связи с Telegram API
-telebot.apihelper.proxy = {'https': f'http://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:{XUI_PORT}'}
+# Прокси полностью удален. В режиме Webhook запросы идут напрямую и безопасно.
 bot = telebot.TeleBot(BOT_TOKEN)
 
 TEST_USERS_FILE = "client_test_users.json"
@@ -51,7 +49,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}  # К панели идем напрямую
+    session.proxies = {} 
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -196,12 +194,26 @@ def handle_menu_clicks(call):
     elif call.data == "menu_support":
         bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате, настройке или подключению, напишите нашему администратору: @Mr_Kako1")
 
-# Безопасный заглушечный обработчик для старых кнопок покупки (без отступов)
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
     bot.send_message(call.message.chat.id, "💳 Для оформления покупки подписки напишите нашему администратору в раздел **«👤 Поддержка»**.")
 
-# Обычный бесконечный запуск
-bot.remove_webhook()
-bot.polling(none_stop=True, timeout=90, long_polling_timeout=90)
+# =====================================================================
+# ТОЧКА ПОДКЛЮЧЕНИЯ ВЕБХУКА ДЛЯ СЕРВЕРА GUNICORN НА RENDER
+# =====================================================================
+app = Flask(__name__)
+RENDER_URL = "https://onrender.com"
+
+@app.route('/' + BOT_TOKEN, methods=['POST'])
+def getMessage():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
+@app.route("/")
+def webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url=RENDER_URL + '/' + BOT_TOKEN)
+    return "Webhook successfully set!", 200
