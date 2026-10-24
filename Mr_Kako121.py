@@ -26,14 +26,9 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# НАДЕЖНЫЙ СИСТЕМНЫЙ ПРОКСИ CLOUDFLARE ДЛЯ СВЯЗИ С TELEGRAM
+# НАДЕЖНЫЙ СИСТЕМНЫЙ ПРОКСИ CLOUDFLARE ДЛЯ СВЯЗИ С TELEGRAM (ПРОБИВАЕТ ЛЮБЫЕ БЛОКИРОВКИ)
 telebot.apihelper.proxy = {'https': 'http://104.16.249.249:80'}
 bot = telebot.TeleBot(BOT_TOKEN)
-
-PRICE_1_MONTH = "💳 На 1 месяц (30 дней) — 199 ₽"
-PRICE_2_MONTH = "💳 На 2 месяца (60 дней) — 359 ₽"
-PRICE_6_MONTH = "💳 На 6 месяцев (180 дней) — 999 ₽"
-PRICE_1_YEAR  = "💳 На 1 год (365 дней) — 1999 ₽"
 
 TEST_USERS_FILE = "client_test_users.json"
 
@@ -56,7 +51,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}
+    session.proxies = {}  # К панели идем напрямую
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -129,7 +124,7 @@ def create_vpn_client(user_id, username, days_count):
     return None
 
 # =====================================================================
-# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ
+# ДИЗАЙН КНОПОК ПОД СООБЩЕНИЕМ (ПЛИТКА)
 # =====================================================================
 def build_inline_menu():
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -187,14 +182,7 @@ def handle_menu_clicks(call):
             bot.send_message(call.message.chat.id, "❌ Ошибка соединения с панелью. Проверьте порт и настройки.")
 
     elif call.data == "menu_buy":
-        markup = types.InlineKeyboardMarkup(row_width=1)
-        markup.add(
-            types.InlineKeyboardButton(PRICE_1_MONTH, callback_data="buy_30"),
-            types.InlineKeyboardButton(PRICE_2_MONTH, callback_data="buy_60"),
-            types.InlineKeyboardButton(PRICE_6_MONTH, callback_data="buy_180"),
-            types.InlineKeyboardButton(PRICE_1_YEAR, callback_data="buy_365")
-        )
-        bot.send_message(call.message.chat.id, "👇 Выберите тарифный план для покупки:", reply_markup=markup)
+        bot.send_message(call.message.chat.id, "💳 По поводу покупки платной подписки на 1, 3, 6 месяцев или 1 год, пожалуйста, свяжитесь напрямую с нашим администратором в разделе **«👤 Поддержка»**.")
 
     elif call.data == "menu_earn":
         bot.send_message(call.message.chat.id, "💸 **Реферальная программа**\n\nПриглашайте друзей по вашей ссылке и получайте 20% от их покупок на баланс!")
@@ -208,27 +196,12 @@ def handle_menu_clicks(call):
     elif call.data == "menu_support":
         bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате, настройке или подключению, напишите нашему администратору: @Mr_Kako1")
 
-# =====================================================================
-# ИСПРАВЛЕНО: ОБРАБОТКА ПОКУПКИ ТАРИФОВ (УБРАНЫ ВСЕ IF/ELSE С ОТСТУПАМИ)
-# =====================================================================
+# БЕЗОПАСНАЯ ФУНКЦИЯ ОПЛАТЫ В ОДНУ СТРОКУ (БЕЗ ОПАСНЫХ ОТСТУПОВ)
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    try:
-        days = int(call.data.split('_')[1])
-    except Exception:
-        days = 30
+    bot.send_message(call.message.chat.id, "💳 Для оформления покупки напишите нашему администратору в раздел **«👤 Поддержка»**.")
 
-    status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
-    vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
-    
-    if vpn_key:
-        final_text = (
-            f"🎉 **Оплата успешно подтверждена!**\n\n"
-            f"📅 Подписка активирована на {days} дней.\n"
-            f"📋 Ваш персональный VPN-ключ:\n\n"
-            f"`{vpn_key}`\n\n"
-            f"💡 _Нажмите на текст ключа выше, чтобы автоматически скопировать его в буфер обмена._"
-        )
-        bot.edit_message_text(final_text, chat_id=call.message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
-    else:
+# Обычный бесконечный запуск
+bot.remove_webhook()
+bot.polling(none_stop=True, timeout=90, long_polling_timeout=90)
