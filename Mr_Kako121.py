@@ -26,8 +26,8 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# НАДЕЖНЫЙ СИСТЕМНЫЙ ПРОКСИ CLOUDFLARE ДЛЯ СВЯЗИ С TELEGRAM (ПРОБИВАЕТ ЛЮБЫЕ БЛОКИРОВКИ)
-telebot.apihelper.proxy = {'https': 'http://104.16.249.249:80'}
+# ИСПРАВЛЕНО: Ваш личный защищенный туннель с авторизацией для связи с Telegram API
+telebot.apihelper.proxy = {'https': f'http://{XUI_LOGIN}:{XUI_PASSWORD}@{XUI_IP}:{XUI_PORT}'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
 TEST_USERS_FILE = "client_test_users.json"
@@ -196,11 +196,11 @@ def handle_menu_clicks(call):
     elif call.data == "menu_support":
         bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате, настройке или подключению, напишите нашему администратору: @Mr_Kako1")
 
-# БЕЗОПАСНАЯ ФУНКЦИЯ ОПЛАТЫ В ОДНУ СТРОКУ (БЕЗ ОПАСНЫХ ОТСТУПОВ)
+# Безопасный заглушечный обработчик для старых кнопок покупки (без отступов)
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    bot.send_message(call.message.chat.id, "💳 Для оформления покупки напишите нашему администратору в раздел **«👤 Поддержка»**.")
+    bot.send_message(call.message.chat.id, "💳 Для оформления покупки подписки напишите нашему администратору в раздел **«👤 Поддержка»**.")
 
 # Обычный бесконечный запуск
 bot.remove_webhook()
