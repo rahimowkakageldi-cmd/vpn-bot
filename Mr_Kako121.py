@@ -26,7 +26,7 @@ XUI_SECRET_PATH = "ba9791eb5caf77a79d7f206c4fceda11"
 
 PANEL_URL = f"http://{XUI_IP}:{XUI_PORT}/{XUI_SECRET_PATH}"
 
-# НАДЕЖНЫЙ СИСТЕМНЫЙ ПРОКСИ CLOUDFLARE ДЛЯ СВЯЗИ С TELEGRAM (ПРОБИВАЕТ ЛЮБЫЕ БЛОКИРОВКИ)
+# НАДЕЖНЫЙ СИСТЕМНЫЙ ПРОКСИ CLOUDFLARE ДЛЯ СВЯЗИ С TELEGRAM
 telebot.apihelper.proxy = {'https': 'http://104.16.249.249:80'}
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -56,7 +56,7 @@ def save_test_user(user_id):
 def get_xui_session():
     session = requests.Session()
     session.verify = False
-    session.proxies = {}  # К панели идем напрямую
+    session.proxies = {}
     
     login_url = f"{PANEL_URL}/login"
     try:
@@ -205,17 +205,19 @@ def handle_menu_clicks(call):
     elif call.data == "menu_about":
         bot.send_message(call.message.chat.id, "ℹ️ **О сервисе**\n\nМы предоставляем сверхбыстрый VPN на протоколе VLESS Reality со скоростью до 1 Гбит/с. Серверы расположены в Амстердаме, Нидерланды.")
 
-    # ИСПРАВЛЕНО: Добавлен ваш точный юзернейм техподдержки
     elif call.data == "menu_support":
         bot.send_message(call.message.chat.id, "👤 **Поддержка**\n\nЕсли у вас возникли вопросы по оплате, настройке или подключению, напишите нашему администратору: @Mr_Kako1")
 
 # =====================================================================
-# ОБРАБОТКА ПОКУПКИ ТАРИФОВ
+# ИСПРАВЛЕНО: ОБРАБОТКА ПОКУПКИ ТАРИФОВ (УБРАНЫ ВСЕ IF/ELSE С ОТСТУПАМИ)
 # =====================================================================
 @bot.callback_query_handler(func=lambda call: call.data.startswith('buy_'))
 def handle_payment(call):
     bot.answer_callback_query(call.id)
-    days = int(call.data.split('_')[1])
+    try:
+        days = int(call.data.split('_')[1])
+    except Exception:
+        days = 30
 
     status_msg = bot.send_message(call.message.chat.id, "⏳ Генерирую вашу оплаченную подписку...")
     vpn_key = create_vpn_client(call.from_user.id, call.from_user.username, days)
